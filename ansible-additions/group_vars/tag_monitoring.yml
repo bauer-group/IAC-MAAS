@@ -1,0 +1,15 @@
+---
+# group_vars/tag_monitoring.yml
+monitoring_role: server
+monitoring_retention_days: 30
+monitoring_data_dir: /data
+
+monitoring_components:
+  prometheus: true
+  grafana: true
+  loki: true
+  alertmanager: true
+
+bauergroup_sysctl_overrides:
+  fs.file-max: 2097152
+  fs.inotify.max_user_watches: 524288

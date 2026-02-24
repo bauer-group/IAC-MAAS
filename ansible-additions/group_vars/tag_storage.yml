@@ -1,0 +1,9 @@
+---
+# group_vars/tag_storage.yml
+storage_role: node
+storage_backend: longhorn  # oder ceph
+storage_data_dir: /data/storage
+
+bauergroup_sysctl_overrides:
+  vm.dirty_ratio: 20
+  vm.dirty_background_ratio: 5

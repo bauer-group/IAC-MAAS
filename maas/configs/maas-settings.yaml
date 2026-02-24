@@ -1,0 +1,31 @@
+---
+# =============================================================================
+# MAAS Konfigurationsreferenz
+# Diese Datei dokumentiert die MAAS-Einstellungen.
+# Änderungen werden durch bootstrap-maas.sh und configure-network.sh gesetzt.
+# =============================================================================
+
+maas_server:
+  channel: "3.5/stable"
+  admin_user: admin
+  domain: cloud.bauer-group.com
+
+network:
+  dns: "8.8.8.8 1.1.1.1"
+  ntp: "time.bauer-group.com"
+  vlans:
+    provision: { vid: 100, cidr: "10.100.0.0/16", gateway: "10.100.0.1", dhcp: true }
+    mgmt:      { vid: 110, cidr: "10.110.0.0/16", gateway: "10.110.0.1", dhcp: false }
+    bmc:       { vid: 120, cidr: "10.120.0.0/16", gateway: "10.120.0.1", dhcp: false }
+
+images:
+  default_os: ubuntu
+  default_series: jammy
+  available: [jammy, noble]
+
+ansible_integration:
+  repo: "https://github.com/bauer-group/IAC-Ansible.git"
+  branch: main
+  pull_playbook: site-pull.yml
+  pull_interval_min: 30
+  identity_path: /etc/bauer-group/node-identity.json

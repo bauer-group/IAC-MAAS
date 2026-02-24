@@ -1,0 +1,138 @@
+---
+# =============================================================================
+# Rolle: monitoring-agent
+# Zweck: Node Exporter (Metriken) + Promtail (Logs) auf jedem Node.
+#        Sendet Daten an zentralen Prometheus/Loki Server.
+# =============================================================================
+
+- name: "Monitoring Pakete prüfen"
+  ansible.builtin.stat:
+    path: /usr/local/bin/node_exporter
+  register: node_exporter_bin
+
+# ── Node Exporter ────────────────────────────────────────────────────────
+- name: "Node Exporter installieren"
+  when: not node_exporter_bin.stat.exists
+  block:
+    - name: "Node Exporter herunterladen"
+      ansible.builtin.get_url:
+        url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+        dest: /tmp/node_exporter.tar.gz
+        checksum: "sha256:{{ node_exporter_sha256 }}"
+        mode: "0644"
+        timeout: 60
+
+    - name: "Node Exporter entpacken"
+      ansible.builtin.unarchive:
+        src: /tmp/node_exporter.tar.gz
+        dest: /tmp/
+        remote_src: true
+
+    - name: "Binary kopieren"
+      ansible.builtin.copy:
+        src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+        dest: /usr/local/bin/node_exporter
+        mode: "0755"
+        remote_src: true
+
+    - name: "Temporäre Dateien aufräumen"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/node_exporter.tar.gz
+        - "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64"
+
+- name: "node_exporter User"
+  ansible.builtin.user:
+    name: node_exporter
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+
+- name: "Node Exporter Systemd Service"
+  ansible.builtin.template:
+    src: node_exporter.service.j2
+    dest: /etc/systemd/system/node_exporter.service
+    mode: "0644"
+  notify: restart node_exporter
+
+- name: "Node Exporter starten"
+  ansible.builtin.systemd:
+    name: node_exporter
+    state: started
+    enabled: true
+    daemon_reload: true
+
+# ── Promtail (Log Shipping) ─────────────────────────────────────────────
+- name: "Promtail installieren"
+  when: bauergroup_promtail_enabled | default(true)
+  block:
+    - name: "Promtail Binary prüfen"
+      ansible.builtin.stat:
+        path: /usr/local/bin/promtail
+      register: promtail_bin
+
+    - name: "Promtail herunterladen"
+      ansible.builtin.get_url:
+        url: "https://github.com/grafana/loki/releases/download/v{{ promtail_version }}/promtail-linux-amd64.zip"
+        dest: /tmp/promtail.zip
+        checksum: "sha256:{{ promtail_sha256 }}"
+        mode: "0644"
+        timeout: 60
+      when: not promtail_bin.stat.exists
+
+    - name: "Promtail entpacken"
+      ansible.builtin.unarchive:
+        src: /tmp/promtail.zip
+        dest: /usr/local/bin/
+        remote_src: true
+        creates: /usr/local/bin/promtail-linux-amd64
+      when: not promtail_bin.stat.exists
+
+    - name: "Promtail Binary umbenennen"
+      ansible.builtin.copy:
+        src: /usr/local/bin/promtail-linux-amd64
+        dest: /usr/local/bin/promtail
+        mode: "0755"
+        remote_src: true
+      when: not promtail_bin.stat.exists
+
+    - name: "Promtail User erstellen"
+      ansible.builtin.user:
+        name: promtail
+        system: true
+        shell: /usr/sbin/nologin
+        create_home: false
+
+    - name: "Promtail Verzeichnisse"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: promtail
+        group: promtail
+        mode: "0755"
+      loop:
+        - /etc/promtail
+        - /var/lib/promtail
+
+    - name: "Promtail Konfiguration"
+      ansible.builtin.template:
+        src: promtail.yml.j2
+        dest: /etc/promtail/config.yml
+        mode: "0644"
+      notify: restart promtail
+
+    - name: "Promtail Systemd Service"
+      ansible.builtin.template:
+        src: promtail.service.j2
+        dest: /etc/systemd/system/promtail.service
+        mode: "0644"
+      notify: restart promtail
+
+    - name: "Promtail starten"
+      ansible.builtin.systemd:
+        name: promtail
+        state: started
+        enabled: true
+        daemon_reload: true

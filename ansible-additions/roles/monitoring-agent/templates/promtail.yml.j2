@@ -1,0 +1,42 @@
+# Managed by Ansible – IAC-Ansible / monitoring-agent
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /var/lib/promtail/positions.yaml
+
+clients:
+  - url: http://{{ bauergroup_loki_server }}:{{ bauergroup_loki_port }}/loki/api/v1/push
+
+scrape_configs:
+  - job_name: system
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: syslog
+          host: {{ ansible_hostname }}
+          node_role: {{ bauergroup_node_role | default('base') }}
+          __path__: /var/log/syslog
+
+  - job_name: auth
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: auth
+          host: {{ ansible_hostname }}
+          __path__: /var/log/auth.log
+
+  - job_name: bauer-group
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: bauer-group
+          host: {{ ansible_hostname }}
+          __path__: /var/log/bauer-group/*.log
+
+  - job_name: journal
+    journal:
+      labels:
+        job: journal
+        host: {{ ansible_hostname }}

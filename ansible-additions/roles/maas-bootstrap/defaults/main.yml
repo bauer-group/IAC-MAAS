@@ -1,0 +1,44 @@
+---
+maas_bootstrap_packages:
+  - curl
+  - wget
+  - jq
+  - htop
+  - iotop
+  - net-tools
+  - dnsutils
+  - traceroute
+  - mtr-tiny
+  - tree
+  - unzip
+  - chrony
+  - rsync
+  - tmux
+  - vim
+  - python3-pip
+  - python3-apt
+  - python3-venv
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - software-properties-common
+  - auditd
+  - fail2ban
+  - ufw
+
+maas_bootstrap_sysctl:
+  net.core.somaxconn: 65535
+  net.ipv4.tcp_max_syn_backlog: 65535
+  net.ipv4.ip_local_port_range: "1024 65535"
+  net.ipv4.conf.all.rp_filter: 1
+  net.ipv4.icmp_echo_ignore_broadcasts: 1
+  net.ipv4.tcp_fin_timeout: 15
+  net.ipv4.tcp_keepalive_time: 300
+  net.ipv4.tcp_tw_reuse: 1
+  vm.swappiness: 10
+  fs.file-max: 1048576
+
+bauergroup_timezone: "Etc/UTC"
+bauergroup_ntp_servers:
+  - time.bauer-group.com

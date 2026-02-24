@@ -1,0 +1,96 @@
+---
+# =============================================================================
+# Rolle: node-identity
+# Zweck: Lädt die MAAS Node-Identity und stellt sie als Ansible Facts bereit.
+#
+# Dies ist die BRÜCKE zwischen IAC-MAAS und IAC-Ansible.
+# cloud-init (MAAS) schreibt /etc/bauer-group/node-identity.json
+# Diese Rolle liest es und macht daraus Ansible Facts.
+# =============================================================================
+
+- name: "Bauer Verzeichnisse sicherstellen"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ bauergroup_base_dir }}"
+    - "{{ bauergroup_log_dir }}"
+    - "{{ bauergroup_opt_dir }}"
+
+- name: "Node-Identity Datei prüfen"
+  ansible.builtin.stat:
+    path: "{{ bauergroup_identity_file }}"
+  register: identity_stat
+
+- name: "Node-Identity laden"
+  when: identity_stat.stat.exists
+  block:
+    - name: "Identity JSON lesen"
+      ansible.builtin.slurp:
+        src: "{{ bauergroup_identity_file }}"
+      register: identity_raw
+
+    - name: "Identity parsen"
+      ansible.builtin.set_fact:
+        bauergroup_node_identity: "{{ identity_raw.content | b64decode | from_json }}"
+
+    - name: "Facts aus Identity setzen"
+      ansible.builtin.set_fact:
+        bauergroup_node_role: "{{ bauergroup_node_identity.node_role | default('base') }}"
+        bauergroup_maas_tags: "{{ bauergroup_node_identity.maas_tags | default('') }}"
+        bauergroup_maas_tag_list: "{{ (bauergroup_node_identity.maas_tags | default('')).split(',') | map('trim') | select | list }}"
+        bauergroup_provisioner: "{{ bauergroup_node_identity.provisioner | default('unknown') }}"
+        bauergroup_provisioned_at: "{{ bauergroup_node_identity.provisioned_at | default('unknown') }}"
+        bauergroup_maas_managed: true
+
+- name: "Fallback Identity (kein MAAS Deploy)"
+  when: not identity_stat.stat.exists
+  block:
+    - name: "Default Identity erstellen"
+      ansible.builtin.copy:
+        dest: "{{ bauergroup_identity_file }}"
+        content: |
+          {
+            "provisioner": "manual",
+            "node_role": "base",
+            "maas_tags": "",
+            "ansible_repo": "{{ bauergroup_ansible_repo }}",
+            "ansible_branch": "{{ bauergroup_ansible_branch }}",
+            "provisioned_at": "{{ ansible_date_time.iso8601 }}",
+            "organization": "{{ bauergroup_org }}"
+          }
+        mode: "0640"
+
+    - name: "Default Facts setzen"
+      ansible.builtin.set_fact:
+        bauergroup_node_role: "base"
+        bauergroup_maas_tags: ""
+        bauergroup_maas_tag_list: []
+        bauergroup_provisioner: "manual"
+        bauergroup_provisioned_at: "{{ ansible_date_time.iso8601 }}"
+        bauergroup_maas_managed: false
+
+# ── Custom Facts für future Runs ──────────────────────────────────────────
+- name: "Ansible Local Facts Verzeichnis"
+  ansible.builtin.file:
+    path: /etc/ansible/facts.d
+    state: directory
+    mode: "0755"
+
+- name: "Bauer Fact Script installieren"
+  ansible.builtin.copy:
+    dest: /etc/ansible/facts.d/bauer.fact
+    mode: "0755"
+    content: |
+      #!/bin/bash
+      # Ansible Local Fact: bauer
+      if [[ -f /etc/bauer-group/node-identity.json ]]; then
+        cat /etc/bauer-group/node-identity.json
+      else
+        echo '{"provisioner":"unknown","node_role":"base","maas_tags":""}'
+      fi
+
+- name: "Identity Zusammenfassung"
+  ansible.builtin.debug:
+    msg: "Node {{ ansible_hostname }} | Rolle: {{ bauergroup_node_role }} | Tags: {{ bauergroup_maas_tag_list | join(', ') }} | Provisioner: {{ bauergroup_provisioner }}"

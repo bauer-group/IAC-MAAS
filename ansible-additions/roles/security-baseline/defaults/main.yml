@@ -1,0 +1,29 @@
+---
+bauergroup_ssh_port: 22
+bauergroup_ssh_permit_root: "no"
+bauergroup_ssh_password_auth: "no"
+bauergroup_ssh_max_auth_tries: 3
+bauergroup_ssh_allowed_users:
+  - ubuntu
+  - ansible
+
+bauergroup_fail2ban_enabled: true
+bauergroup_fail2ban_bantime: 3600
+bauergroup_fail2ban_findtime: 600
+bauergroup_fail2ban_maxretry: 5
+
+bauergroup_auditd_enabled: true
+bauergroup_unattended_upgrades: true
+bauergroup_node_exporter_port: 9100
+bauergroup_monitoring_enabled: true
+bauergroup_monitoring_subnet: "10.110.0.0/16"
+
+security_baseline_ufw_rules: []
+
+security_baseline_sysctl:
+  kernel.randomize_va_space: 2
+  net.ipv4.conf.all.accept_redirects: 0
+  net.ipv4.conf.default.accept_redirects: 0
+  net.ipv4.conf.all.send_redirects: 0
+  net.ipv4.conf.all.accept_source_route: 0
+  net.ipv6.conf.all.accept_redirects: 0

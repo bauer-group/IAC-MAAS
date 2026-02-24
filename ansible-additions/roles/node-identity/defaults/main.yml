@@ -1,0 +1,8 @@
+---
+bauergroup_base_dir: /etc/bauer-group
+bauergroup_log_dir: /var/log/bauer-group
+bauergroup_opt_dir: /opt/bauer-group
+bauergroup_identity_file: "{{ bauergroup_base_dir }}/node-identity.json"
+bauergroup_org: "bauer-group"
+bauergroup_ansible_repo: "https://github.com/bauer-group/IAC-Ansible.git"
+bauergroup_ansible_branch: "main"

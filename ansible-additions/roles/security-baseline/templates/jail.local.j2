@@ -1,0 +1,12 @@
+# Managed by Ansible – IAC-Ansible / security-baseline
+[DEFAULT]
+bantime = {{ bauergroup_fail2ban_bantime }}
+findtime = {{ bauergroup_fail2ban_findtime }}
+maxretry = {{ bauergroup_fail2ban_maxretry }}
+backend = systemd
+
+[sshd]
+enabled = true
+port = {{ bauergroup_ssh_port }}
+filter = sshd
+logpath = /var/log/auth.log

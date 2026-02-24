@@ -1,0 +1,76 @@
+#cloud-config
+# =============================================================================
+# cloud-init Base Template – Brücke zwischen IAC-MAAS und IAC-Ansible
+#
+# Dieses Template wird von MAAS als user_data injected.
+# Es setzt die Node-Identity und bootstrappt Ansible via IAC-Ansible install.sh.
+#
+# Alles weitere (Pakete, Security, Monitoring, K8s, etc.) macht Ansible.
+#
+# Platzhalter (werden durch deploy-machine.sh ersetzt):
+#   ##ANSIBLE_REPO_URL##    → https://github.com/bauer-group/IAC-Ansible.git
+#   ##ANSIBLE_REPO_BRANCH## → main
+#   ##HOSTNAME##            → Von MAAS gesetzt
+#   ##MAAS_TAGS##           → Kommagetrennte MAAS Tags
+#   ##TIMEZONE##            → Etc/UTC (aus config.env)
+#   ##BAUER_ORG##           → bauer-group (aus config.env)
+# =============================================================================
+
+# ── Minimale System-Vorbereitung ────────────────────────────────────────────
+package_update: true
+package_upgrade: true
+
+packages:
+  - curl
+  - jq
+
+locale: en_US.UTF-8
+timezone: ##TIMEZONE##
+
+ssh_pwauth: false
+disable_root: true
+
+# ── Node-Identity schreiben ─────────────────────────────────────────────────
+write_files:
+
+  # ╔═══════════════════════════════════════════════════════════════════════╗
+  # ║  NODE IDENTITY – Das zentrale Identitätsdokument                    ║
+  # ║  Wird von IAC-Ansible (Rolle: node-identity) gelesen                ║
+  # ╚═══════════════════════════════════════════════════════════════════════╝
+  - path: /etc/bauer-group/node-identity.json
+    permissions: "0640"
+    content: |
+      {
+        "provisioner": "maas",
+        "maas_tags": "##MAAS_TAGS##",
+        "ansible_repo": "##ANSIBLE_REPO_URL##",
+        "ansible_branch": "##ANSIBLE_REPO_BRANCH##",
+        "provisioned_at": "__TIMESTAMP__",
+        "organization": "##BAUER_ORG##"
+      }
+
+# ── Bootstrap ───────────────────────────────────────────────────────────────
+runcmd:
+  # Verzeichnisse sicherstellen
+  - mkdir -p /etc/bauer-group /var/log/bauer-group
+
+  # Timestamp in Identity setzen
+  - sed -i "s|__TIMESTAMP__|$(date -u +%Y-%m-%dT%H:%M:%SZ)|" /etc/bauer-group/node-identity.json
+
+  # IAC-Ansible Bootstrap via install.sh
+  # Das Script installiert Ansible, richtet systemd-Timer ein und führt den
+  # ersten Pull aus. Danach ist Ansible für alles weitere verantwortlich.
+  - |
+    REPO_URL="##ANSIBLE_REPO_URL##" \
+    BRANCH="##ANSIBLE_REPO_BRANCH##" \
+    curl -fsSL https://raw.githubusercontent.com/bauer-group/IAC-Ansible/##ANSIBLE_REPO_BRANCH##/scripts/install.sh | bash
+
+  # Provisionierungslog
+  - echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) MAAS cloud-init complete. Host=##HOSTNAME##" >> /var/log/bauer-group/provisioning.log
+
+final_message: |
+  ═══════════════════════════════════════
+  MAAS cloud-init abgeschlossen
+  Host:   ##HOSTNAME##
+  Uptime: $UPTIME
+  ═══════════════════════════════════════

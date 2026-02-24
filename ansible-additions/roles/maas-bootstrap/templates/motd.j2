@@ -1,0 +1,13 @@
+
+═══════════════════════════════════════════════════════════
+  BAUER GROUP – Managed Infrastructure
+  Host:   {{ ansible_hostname }}
+  Role:   {{ bauergroup_node_role | default('base') }}
+  Tags:   {{ bauergroup_maas_tag_list | default([]) | join(', ') }}
+  Mgmt:   Ansible (IAC-Ansible) + MAAS (IAC-MAAS)
+═══════════════════════════════════════════════════════════
+  Änderungen an diesem System werden automatisch
+  durch Ansible zurückgesetzt (alle 30 Min).
+  Config: https://github.com/bauer-group/IAC-Ansible
+═══════════════════════════════════════════════════════════
+

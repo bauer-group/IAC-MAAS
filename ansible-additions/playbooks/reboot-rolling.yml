@@ -1,0 +1,30 @@
+---
+# =============================================================================
+# reboot-rolling.yml – Rolling Reboot (1 Node gleichzeitig)
+# Verwendung: ansible-playbook -i inventory/maas/maas_inventory.py playbooks/reboot-rolling.yml -l tag_k8s_worker
+# =============================================================================
+- name: "Rolling Reboot"
+  hosts: "{{ target | default('maas_provisioned') }}"
+  become: true
+  serial: 1
+
+  tasks:
+    - name: "Reboot-Bedarf prüfen"
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: reboot_needed
+
+    - name: "Node rebooten"
+      ansible.builtin.reboot:
+        msg: "Ansible Rolling Reboot"
+        reboot_timeout: 300
+      when: reboot_needed.stat.exists
+
+    - name: "Warte auf Services"
+      ansible.builtin.wait_for:
+        port: "{{ bauergroup_ssh_port | default(22) }}"
+        delay: 10
+        timeout: 120
+      delegate_to: localhost
+      become: false
+      when: reboot_needed.stat.exists

@@ -1,0 +1,119 @@
+---
+# =============================================================================
+# site-pull.yml – Entrypoint für ansible-pull (MAAS → cloud-init → hier)
+#
+# Wird automatisch durch den IAC-Ansible install.sh systemd-Timer aufgerufen.
+# Läuft auf jedem Node lokal (connection: local).
+#
+# Node-Identity kommt aus /etc/bauer-group/node-identity.json (cloud-init).
+# Beispiel: { "maas_tags": "k8s-worker,ssd", "provisioner": "maas" }
+#
+# Ablauf:
+#   1. node-identity    → Facts laden, Gruppen bestimmen
+#   2. maas-bootstrap   → Basis-Setup (Pakete, NTP, Verzeichnisse) [nur MAAS-Nodes]
+#   3. security-baseline → SSH, Firewall, auditd
+#   4. monitoring-agent  → Node Exporter, Promtail
+#   5. Rollen-spezifisch → Je nach maas_tags
+# =============================================================================
+
+- name: "Bauer Group – Node Provisioning (Pull-Modus)"
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: true
+
+  vars:
+    # Defaults (überschrieben durch node-identity.json)
+    node_role: "{{ node_role | default('base') }}"
+    maas_tags: "{{ maas_tags | default('') }}"
+    ansible_pull_mode: "{{ ansible_pull_mode | default(false) }}"
+    provisioner: "{{ provisioner | default('unknown') }}"
+
+  pre_tasks:
+    - name: "Prüfe ob Node-Identity existiert"
+      ansible.builtin.stat:
+        path: /etc/bauer-group/node-identity.json
+      register: identity_file
+
+    - name: "Node-Identity laden (falls vorhanden)"
+      ansible.builtin.include_vars:
+        file: /etc/bauer-group/node-identity.json
+        name: bauergroup_identity
+      when: identity_file.stat.exists
+
+    - name: "MAAS Tags als Liste parsen"
+      ansible.builtin.set_fact:
+        maas_tag_list: "{{ maas_tags.split(',') | map('trim') | select | list }}"
+      when: maas_tags | length > 0
+
+    - name: "MAAS Tags als leere Liste"
+      ansible.builtin.set_fact:
+        maas_tag_list: []
+      when: maas_tags | length == 0
+
+    - name: "Provisionierungs-Info anzeigen"
+      ansible.builtin.debug:
+        msg: |
+          ═══════════════════════════════════════
+          Node:       {{ ansible_hostname }}
+          Rolle:      {{ node_role }}
+          Tags:       {{ maas_tag_list | join(', ') }}
+          Provisioner: {{ provisioner }}
+          Pull-Modus: {{ ansible_pull_mode }}
+          ═══════════════════════════════════════
+
+  roles:
+    # ── Stufe 1: Identity (immer) ─────────────────────────────────────
+    - role: node-identity
+
+    # ── Stufe 2: Bootstrap (nur MAAS-Nodes) ────────────────────────────
+    - role: maas-bootstrap
+      when: bauergroup_maas_managed | default(false)
+
+    # ── Stufe 3: Security & Monitoring (alle Nodes) ────────────────────
+    - role: security-baseline
+    - role: monitoring-agent
+      when: bauergroup_monitoring_enabled | default(true)
+
+    # ── Stufe 2: Rollen-spezifisch (Tag-basiert) ────────────────────────
+    # Hier eure bestehenden Rollen einhängen:
+    #
+    # - role: k8s-common
+    #   when: "'k8s-control' in maas_tag_list or 'k8s-worker' in maas_tag_list"
+    #
+    # - role: k8s-control-plane
+    #   when: "'k8s-control' in maas_tag_list"
+    #
+    # - role: k8s-worker
+    #   when: "'k8s-worker' in maas_tag_list"
+    #
+    # - role: monitoring-stack
+    #   when: "'monitoring' in maas_tag_list"
+    #
+    # - role: storage-ceph
+    #   when: "'storage' in maas_tag_list"
+    #
+    # - role: docker-host
+    #   when: "'docker' in maas_tag_list"
+
+  post_tasks:
+    - name: "Provisionierungs-Status schreiben"
+      ansible.builtin.copy:
+        dest: /etc/bauer-group/provisioning-status.json
+        content: |
+          {
+            "status": "complete",
+            "last_run": "{{ ansible_date_time.iso8601 }}",
+            "node_role": "{{ node_role }}",
+            "maas_tags": {{ maas_tag_list | to_json }},
+            "ansible_version": "{{ ansible_version.full }}",
+            "pull_mode": {{ ansible_pull_mode | to_json }}
+          }
+        mode: "0644"
+
+    - name: "Provisioning-Log aktualisieren"
+      ansible.builtin.lineinfile:
+        path: /var/log/bauer-group/provisioning.log
+        line: "{{ ansible_date_time.iso8601 }} ansible-pull complete role={{ node_role }} tags={{ maas_tag_list | join(',') }}"
+        create: true
+        mode: "0644"

@@ -1,0 +1,13 @@
+# Managed by Ansible – IAC-Ansible / security-baseline
+PermitRootLogin {{ bauergroup_ssh_permit_root }}
+PasswordAuthentication {{ bauergroup_ssh_password_auth }}
+PubkeyAuthentication yes
+MaxAuthTries {{ bauergroup_ssh_max_auth_tries }}
+X11Forwarding no
+AllowTcpForwarding no
+ClientAliveInterval 300
+ClientAliveCountMax 2
+LoginGraceTime 30
+{% if bauergroup_ssh_allowed_users | length > 0 %}
+AllowUsers {{ bauergroup_ssh_allowed_users | join(' ') }}
+{% endif %}

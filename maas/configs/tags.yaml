@@ -1,0 +1,52 @@
+---
+# =============================================================================
+# MAAS Tag Definitionen
+# Tags bestimmen die Ansible-Gruppe des Nodes.
+# configure-network.sh erstellt diese Tags automatisch.
+#
+# Alle Nodes bekommen das gleiche cloud-init Template (base.yaml).
+# Die Rollenzuweisung erfolgt ausschließlich durch Ansible anhand der Tags.
+# =============================================================================
+
+# Rollen-Tags (bestimmen Ansible Gruppen)
+role_tags:
+  - name: k8s-control
+    description: "Kubernetes Control Plane"
+    ansible_group: tag_k8s_control
+
+  - name: k8s-worker
+    description: "Kubernetes Worker Node"
+    ansible_group: tag_k8s_worker
+
+  - name: monitoring
+    description: "Prometheus/Grafana/Loki Stack"
+    ansible_group: tag_monitoring
+
+  - name: storage
+    description: "Storage Node (Ceph/Longhorn)"
+    ansible_group: tag_storage
+
+  - name: docker
+    description: "Docker Standalone Host"
+    ansible_group: tag_docker
+
+# Hardware-Tags (automatisch oder manuell)
+hardware_tags:
+  - name: gpu
+    description: "Hat GPU"
+    auto_detect: '//node[@id="display"]/vendor[contains(text(),"NVIDIA")]'
+
+  - name: ssd
+    description: "Hat NVMe SSD"
+    auto_detect: false
+
+  - name: 10gbe
+    description: "10 GbE NIC"
+    auto_detect: false
+
+# Status-Tags (durch Ansible gesetzt)
+status_tags:
+  - name: ansible-ok
+    description: "Letzter Ansible Run erfolgreich"
+  - name: ansible-failed
+    description: "Letzter Ansible Run fehlgeschlagen"

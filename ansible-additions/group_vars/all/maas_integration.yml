@@ -1,0 +1,56 @@
+---
+# =============================================================================
+# MAAS Integration – Globale Variablen für alle Nodes
+# Datei: group_vars/all/maas_integration.yml
+# =============================================================================
+
+# ── Organisation ──────────────────────────────────────────────────────────
+bauergroup_org: "bauer-group"
+bauergroup_domain: "cloud.bauer-group.com"
+bauergroup_env: "production"
+
+# ── Bauer Verzeichnisse (Standard auf allen Nodes) ───────────────────────
+bauergroup_base_dir: /etc/bauer-group
+bauergroup_log_dir: /var/log/bauer-group
+bauergroup_opt_dir: /opt/bauer-group
+bauergroup_identity_file: "{{ bauergroup_base_dir }}/node-identity.json"
+bauergroup_provisioning_status: "{{ bauergroup_base_dir }}/provisioning-status.json"
+
+# ── Ansible Pull Konfiguration ───────────────────────────────────────────
+bauergroup_ansible_repo: "https://github.com/bauer-group/IAC-Ansible.git"
+bauergroup_ansible_branch: "main"
+bauergroup_ansible_pull_interval: 30  # Minuten
+bauergroup_ansible_pull_playbook: "site-pull.yml"
+
+# ── DNS / NTP ────────────────────────────────────────────────────────────
+bauergroup_dns_servers:
+  - 8.8.8.8
+  - 1.1.1.1
+bauergroup_ntp_servers:
+  - time.bauer-group.com
+bauergroup_timezone: "Etc/UTC"
+
+# ── SSH ──────────────────────────────────────────────────────────────────
+bauergroup_ssh_port: 22
+bauergroup_ssh_allowed_users:
+  - ubuntu
+  - ansible
+
+# ── Monitoring ───────────────────────────────────────────────────────────
+bauergroup_monitoring_enabled: true
+bauergroup_node_exporter_port: 9100
+bauergroup_promtail_enabled: true
+bauergroup_prometheus_server: "10.110.0.10"  # Anpassen an eigene Monitoring-IP
+bauergroup_loki_server: "10.110.0.10"        # Anpassen an eigene Loki-IP
+bauergroup_loki_port: 3100
+bauergroup_monitoring_subnet: "10.110.0.0/16"  # Subnet für UFW Node Exporter Regel
+
+# ── Security Baseline ────────────────────────────────────────────────────
+bauergroup_security_baseline: true
+bauergroup_fail2ban_enabled: true
+bauergroup_auditd_enabled: true
+bauergroup_unattended_upgrades: true
+
+# ── MAAS Referenz (nicht ändern, wird dynamisch gesetzt) ──────────────────
+# Diese werden durch das Dynamic Inventory oder node-identity.json gesetzt:
+#   maas_system_id, maas_tags, maas_hostname, maas_zone, maas_pool

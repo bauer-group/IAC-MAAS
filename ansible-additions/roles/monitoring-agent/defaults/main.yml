@@ -1,0 +1,13 @@
+---
+node_exporter_version: "1.8.2"
+node_exporter_sha256: "6809dd0b3ec45fd6e992c19071d6b5253aed3ead7571146b9b2e47e9aa019556"
+
+promtail_version: "3.3.2"
+promtail_sha256: "e7c4c50f48f9b9e0e04ed10e0b8b01d1985f8031eb0722e4f3732e76545986db"
+
+bauergroup_node_exporter_port: 9100
+bauergroup_promtail_enabled: true
+bauergroup_loki_server: "10.110.0.10"
+bauergroup_loki_port: 3100
+
+bauergroup_monitoring_enabled: true

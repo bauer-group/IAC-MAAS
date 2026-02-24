@@ -1,0 +1,33 @@
+---
+# =============================================================================
+# update-packages.yml – Paket-Updates auf allen MAAS Nodes
+# Verwendung: ansible-playbook -i inventory/maas/maas_inventory.py playbooks/update-packages.yml [-l tag_k8s_worker]
+# =============================================================================
+- name: "Paket-Updates"
+  hosts: "{{ target | default('maas_provisioned') }}"
+  become: true
+  serial: "{{ serial_count | default(5) }}"
+
+  tasks:
+    - name: "apt update & upgrade"
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: safe
+      register: apt_result
+
+    - name: "Reboot-Bedarf prüfen"
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: reboot_needed
+
+    - name: "Reboot-Warnung"
+      ansible.builtin.debug:
+        msg: "WARNUNG: {{ ansible_hostname }} benötigt Reboot"
+      when: reboot_needed.stat.exists
+
+    - name: "Update-Log"
+      ansible.builtin.lineinfile:
+        path: /var/log/bauer-group/provisioning.log
+        line: "{{ ansible_date_time.iso8601 }} package-update complete packages_changed={{ apt_result.changed }}"
+        create: true
+        mode: "0644"

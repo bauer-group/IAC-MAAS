@@ -1,0 +1,15 @@
+---
+# group_vars/tag_k8s_control.yml
+# Variablen für Kubernetes Control Plane Nodes
+
+k8s_role: control-plane
+k8s_pod_network_cidr: "10.244.0.0/16"
+k8s_service_cidr: "10.96.0.0/12"
+k8s_api_port: 6443
+k8s_etcd_data_dir: /var/lib/etcd
+
+# Control Plane benötigt mehr Ressourcen-Limits
+bauergroup_sysctl_overrides:
+  net.core.somaxconn: 65535
+  net.ipv4.ip_forward: 1
+  fs.inotify.max_user_watches: 524288

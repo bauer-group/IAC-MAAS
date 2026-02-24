@@ -1,0 +1,114 @@
+---
+# =============================================================================
+# Rolle: security-baseline
+# Zweck: Basis-Security für alle MAAS-deployed Nodes.
+#        SSH Hardening, UFW, fail2ban, auditd, unattended-upgrades.
+# =============================================================================
+
+# ── SSH Hardening ────────────────────────────────────────────────────────
+- name: "SSH Konfiguration härten"
+  ansible.builtin.template:
+    src: sshd_config_hardening.j2
+    dest: /etc/ssh/sshd_config.d/99-bauer-hardening.conf
+    mode: "0644"
+    validate: "sshd -t -f %s"
+  notify: restart sshd
+
+# ── UFW Firewall ─────────────────────────────────────────────────────────
+- name: "UFW Default Deny"
+  community.general.ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+
+- name: "UFW SSH erlauben"
+  community.general.ufw:
+    rule: allow
+    port: "{{ bauergroup_ssh_port }}"
+    proto: tcp
+    comment: "SSH"
+
+- name: "UFW Node Exporter (Monitoring)"
+  community.general.ufw:
+    rule: allow
+    port: "{{ bauergroup_node_exporter_port }}"
+    proto: tcp
+    src: "{{ bauergroup_monitoring_subnet }}"
+    comment: "Node Exporter from MGMT"
+  when: bauergroup_monitoring_enabled | default(false)
+
+- name: "UFW zusätzliche Regeln"
+  community.general.ufw:
+    rule: "{{ item.rule | default('allow') }}"
+    port: "{{ item.port }}"
+    proto: "{{ item.proto | default('tcp') }}"
+    src: "{{ item.src | default(omit) }}"
+    comment: "{{ item.comment | default('') }}"
+  loop: "{{ security_baseline_ufw_rules | default([]) }}"
+
+# ── fail2ban ─────────────────────────────────────────────────────────────
+- name: "fail2ban Konfiguration"
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    mode: "0644"
+  notify: restart fail2ban
+  when: bauergroup_fail2ban_enabled | default(true)
+
+- name: "fail2ban aktivieren"
+  ansible.builtin.service:
+    name: fail2ban
+    state: started
+    enabled: true
+  when: bauergroup_fail2ban_enabled | default(true)
+
+# ── auditd ───────────────────────────────────────────────────────────────
+- name: "auditd Regeln"
+  ansible.builtin.copy:
+    dest: /etc/audit/rules.d/99-bauer.rules
+    content: |
+      # Bauer Group Audit Rules
+      -w /etc/passwd -p wa -k identity
+      -w /etc/shadow -p wa -k identity
+      -w /etc/group -p wa -k identity
+      -w /etc/sudoers -p wa -k sudoers
+      -w /etc/ssh/sshd_config -p wa -k sshd
+      -w /etc/bauer-group/ -p wa -k bauer-group-config
+      -w /var/log/bauer-group/ -p wa -k bauer-group-logs
+    mode: "0640"
+  notify: restart auditd
+  when: bauergroup_auditd_enabled | default(true)
+
+- name: "auditd aktivieren"
+  ansible.builtin.service:
+    name: auditd
+    state: started
+    enabled: true
+  when: bauergroup_auditd_enabled | default(true)
+
+# ── Unattended Upgrades ─────────────────────────────────────────────────
+- name: "Unattended Upgrades konfigurieren"
+  ansible.builtin.template:
+    src: 50unattended-upgrades.j2
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    mode: "0644"
+  when: bauergroup_unattended_upgrades | default(true)
+
+- name: "Auto-Update aktivieren"
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::AutocleanInterval "7";
+    mode: "0644"
+  when: bauergroup_unattended_upgrades | default(true)
+
+# ── Kernel Hardening ─────────────────────────────────────────────────────
+- name: "Kernel Hardening Sysctl"
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: true
+  loop: "{{ security_baseline_sysctl | dict2items }}"

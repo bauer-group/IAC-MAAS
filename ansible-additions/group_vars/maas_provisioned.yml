@@ -1,0 +1,10 @@
+---
+# group_vars/maas_provisioned.yml
+# Gilt für ALLE Nodes die durch MAAS deployed wurden.
+
+ansible_become: true
+ansible_user: ubuntu
+ansible_python_interpreter: /usr/bin/python3
+
+# Alle MAAS Nodes bekommen das Basis-Setup
+bauergroup_maas_managed: true
