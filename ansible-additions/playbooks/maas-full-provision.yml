@@ -3,7 +3,7 @@
 # maas-full-provision.yml – Push-basierte Vollprovisionierung
 # Verwendung: ansible-playbook -i inventory/maas/maas_inventory.py playbooks/maas-full-provision.yml
 # =============================================================================
-- name: "Bauer Group – Vollprovisionierung (Push)"
+- name: "BAUER GROUP – Vollprovisionierung (Push)"
   hosts: maas_provisioned
   become: true
   gather_facts: true

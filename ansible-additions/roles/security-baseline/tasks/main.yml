@@ -67,7 +67,7 @@
   ansible.builtin.copy:
     dest: /etc/audit/rules.d/99-bauer.rules
     content: |
-      # Bauer Group Audit Rules
+      # BAUER GROUP Audit Rules
       -w /etc/passwd -p wa -k identity
       -w /etc/shadow -p wa -k identity
       -w /etc/group -p wa -k identity

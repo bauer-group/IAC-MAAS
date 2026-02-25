@@ -1,5 +1,5 @@
 """
-Bauer Group – Custom Jinja2 Filter für Ansible.
+BAUER GROUP – Custom Jinja2 Filter für Ansible.
 Verwendung in Templates: {{ maas_tags | bauer_has_tag('k8s-worker') }}
 """
 

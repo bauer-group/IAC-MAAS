@@ -16,7 +16,7 @@
 #   5. Rollen-spezifisch → Je nach maas_tags
 # =============================================================================
 
-- name: "Bauer Group – Node Provisioning (Pull-Modus)"
+- name: "BAUER GROUP – Node Provisioning (Pull-Modus)"
   hosts: localhost
   connection: local
   become: true
