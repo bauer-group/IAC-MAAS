@@ -1,3 +1,9 @@
+## [0.1.1](https://github.com/bauer-group/IAC-MAAS/compare/v0.1.0...v0.1.1) (2026-06-08)
+
+### 🐛 Bug Fixes
+
+* Update GitHub user reference in configuration ([6f9f825](https://github.com/bauer-group/IAC-MAAS/commit/6f9f825cf47eb912e694895dd8adc1e3809bc358))
+
 ## [0.1.0](https://github.com/bauer-group/IAC-MAAS/compare/v0.0.0...v0.1.0) (2026-02-25)
 
 ### 🚀 Features
